@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>闇鍋ルーレット</title>
+<meta name="description" content="卓ごとに鍋を決めるルーレット。くじ・オリ白で振り直し・記録つき。">
+<meta name="theme-color" content="#15110f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="闇鍋ルーレット">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<style>
+/* 1画面の道具。上にルーレット、下に記録。卓で回して、結果を大きく見せる */
+:root {
+  --bg: #15110f;        /* 土鍋の焦げ色 */
+  --panel: #211a17;
+  --line: #3a2e28;
+  --fg: #f3e9df;
+  --sub: #b6a597;
+  --ember: #e8743b;     /* 火の色 */
+  --broth: #d9b36c;     /* 出汁の色 */
+  --yami: #0b0a10;      /* 闇鍋 */
+  --yami-ink: #b98cf0;
+  --good: #7fc79a;
+  --font-display: "Dela Gothic One", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+  -webkit-tap-highlight-color: transparent; }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 16px; padding-block: 16px 40px; display: grid; gap: 16px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(26px, 6vw, 38px); margin: 0; letter-spacing: .04em; text-wrap: balance; }
+h1 small { font-family: var(--font-body); font-size: 13px; color: var(--sub); letter-spacing: .08em; margin-left: 8px; }
+.remain { font-size: 13px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.remain b { color: var(--fg); font-size: 18px; }
+.main { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 760px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.stage { position: relative; display: grid; place-items: center; }
+.wheel-box { position: relative; width: min(100%, 460px); aspect-ratio: 1; max-width: 100%; }
+canvas { width: 100%; height: 100%; display: block; }
+.pointer { position: absolute; left: 50%; top: -6px; transform: translateX(-50%); width: 0; height: 0;
+  border-left: 16px solid transparent; border-right: 16px solid transparent; border-top: 30px solid var(--ember);
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.6)); }
+.hub { position: absolute; inset: 0; margin: auto; width: 26%; height: 26%; border-radius: 50%; background: var(--panel);
+  border: 3px solid var(--line); display: grid; place-items: center; font-family: var(--font-display); font-size: clamp(12px, 3.4vw, 18px); color: var(--broth); text-align: center; line-height: 1.2; pointer-events: none; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.label { font-size: 12px; color: var(--sub); letter-spacing: .08em; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+input[type=number], input[type=text], select { background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; min-width: 0; }
+input[type=number] { width: 84px; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button { background: transparent; color: var(--sub); border: 0; padding: 8px 14px; font: inherit; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ember); color: #1a0f08; font-weight: 700; }
+button { cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--broth); outline-offset: 2px; }
+.spin { font-family: var(--font-display); font-size: 24px; letter-spacing: .1em; padding: 14px; border-radius: 10px; border: 0;
+  background: var(--ember); color: #1a0f08; width: 100%; }
+.spin:disabled { opacity: .45; cursor: default; }
+.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font: inherit; }
+.ghost.small { font-size: 13px; padding: 6px 10px; }
+.danger { color: #f09a8a; border-color: #5a332c; }
+
+/* 結果 */
+.result { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(8,6,5,.86); padding: 16px; z-index: 10; }
+.card { width: min(560px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 24px 20px; display: grid; gap: 14px; text-align: center; }
+.card .who { color: var(--sub); font-size: 14px; }
+.card .big { font-family: var(--font-display); font-size: clamp(40px, 12vw, 72px); line-height: 1.1; letter-spacing: .04em; overflow-wrap: anywhere; }
+.card.is-yami { background: var(--yami); border-color: #3b2b55; }
+.card.is-yami .big { color: var(--yami-ink); text-shadow: 0 0 24px rgba(185,140,240,.45); }
+.card .sub { font-size: 16px; }
+.card .acts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.card .acts button { padding: 12px; border-radius: 10px; font: inherit; font-weight: 700; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+.card .acts .primary { background: var(--ember); color: #1a0f08; border-color: transparent; }
+.card .note { font-size: 12px; color: var(--sub); }
+
+/* 記録 */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.stat { border: 1px solid var(--line); border-radius: 8px; padding: 8px; text-align: center; }
+.stat b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 11px; color: var(--sub); }
+.log { max-height: 320px; overflow: auto; border-top: 1px solid var(--line); }
+.log table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.log th, .log td { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: left; }
+.log th { color: var(--sub); font-weight: 400; position: sticky; top: 0; background: var(--panel); }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; }
+.tag.yami { background: #2a1f3d; color: var(--yami-ink); }
+.tag.nabe { background: #3a2c17; color: var(--broth); }
+.tag.avoid { background: #1f3326; color: var(--good); }
+details.settings summary { cursor: pointer; color: var(--sub); }
+details.settings[open] summary { margin-bottom: 10px; }
+.confirm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; }
+.hint { font-size: 12px; color: var(--sub); margin: 0; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>闇鍋ルーレット<small>卓ごとに鍋を決める</small></h1>
+    <div class="remain" id="remain"></div>
+  </header>
+
+  <div class="main">
+    <section class="stage" aria-label="ルーレット">
+      <div class="wheel-box">
+        <canvas id="wheel" width="920" height="920" aria-hidden="true"></canvas>
+        <div class="pointer" aria-hidden="true"></div>
+        <div class="hub" id="hub">回す</div>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="回す卓">
+      <div class="row">
+        <div style="display:grid;gap:4px">
+          <label class="label" for="table">卓</label>
+          <select id="table"></select>
+        </div>
+        <div style="display:grid;gap:4px">
+          <span class="label">この卓のチーム</span>
+          <div class="seg" id="teamSeg" role="group" aria-label="この卓のチーム"></div>
+        </div>
+      </div>
+      <p class="hint" id="madeBy"></p>
+      <button class="spin" id="spinBtn">回す</button>
+      <div class="confirm" id="emptyMsg" hidden>くじを引き終わりました。<button class="ghost small" id="refill">くじを入れ直す</button></div>
+
+      <div class="stats" id="stats"></div>
+      <div class="log" id="logBox"></div>
+      <div class="row" style="justify-content:space-between">
+        <button class="ghost small" id="undo">1つ前を取り消す</button>
+        <span class="confirm" id="resetBox"><button class="ghost small danger" id="reset">記録とくじをリセット</button></span>
+      </div>
+
+      <details class="settings">
+        <summary>設定（卓数・闇鍋の数・鍋の名前・チーム名）</summary>
+        <div style="display:grid;gap:12px">
+          <div class="row">
+            <span class="label" style="width:100%">回し方</span>
+            <div class="seg" id="modeSeg" role="group" aria-label="回し方">
+              <button data-mode="lots">くじ（卓数分・引いたら減る）</button>
+              <button data-mode="wheel">毎回同じ確率</button>
+            </div>
+          </div>
+          <div class="row">
+            <label for="nTables">卓数</label><input type="number" id="nTables" min="1" max="40" inputmode="numeric">
+            <label for="nYami">闇鍋のくじ</label><input type="number" id="nYami" min="0" max="40" inputmode="numeric">
+            <span class="hint" id="probHint"></span>
+          </div>
+          <div class="row">
+            <label for="pot1">普通の鍋</label>
+            <input type="text" id="pot1" maxlength="12" style="width:110px">
+            <input type="text" id="pot2" maxlength="12" style="width:110px">
+            <input type="text" id="pot3" maxlength="12" style="width:110px">
+          </div>
+          <div class="row">
+            <label for="teamA">チーム名</label>
+            <input type="text" id="teamA" maxlength="10" style="width:110px">
+            <input type="text" id="teamB" maxlength="10" style="width:110px">
+          </div>
+          <label class="row" style="gap:6px"><input type="checkbox" id="returnAvoided"> オリ白で振り直した闇鍋は、くじに戻す</label>
+          <p class="hint">設定を変えると、くじは入れ直しになります（記録は残ります）。設定と記録はこの端末にだけ保存されます。</p>
+        </div>
+      </details>
+    </section>
+  </div>
+</div>
+
+<div class="result" id="result" hidden>
+  <div class="card" id="card" role="dialog" aria-modal="true" aria-labelledby="resBig">
+    <div class="who" id="resWho"></div>
+    <div class="big" id="resBig"></div>
+    <div class="sub" id="resSub"></div>
+    <div class="acts" id="resActs"></div>
+    <div class="note" id="resNote"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const KEY = 'yaminabe-roulette-v2';
+  const DEF = { mode: 'lots', nTables: 10, nYami: 3, pots: ['鍋①', '鍋②', '鍋③'], teams: ['チームA', 'チームB'], returnAvoided: true, pool: null, log: [], table: 1, team: 0 };
+  let S = load();
+  const $ = id => document.getElementById(id);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function load() {
+    try {
+      const o = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (o && typeof o === 'object') return { ...DEF, ...o, pots: Array.isArray(o.pots) ? o.pots : DEF.pots.slice(), teams: Array.isArray(o.teams) ? o.teams : DEF.teams.slice(), log: Array.isArray(o.log) ? o.log : [] };
+    } catch (e) {}
+    return { ...DEF, pots: DEF.pots.slice(), teams: DEF.teams.slice(), log: [] };
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+  // くじの中身：闇鍋 n 本＋残りを普通の鍋3種に順番に割り振る
+  function buildPool() {
+    const p = [];
+    const nY = Math.min(S.nYami, S.nTables);
+    for (let i = 0; i < nY; i++) p.push({ k: 'yami' });
+    for (let i = 0; i < S.nTables - nY; i++) p.push({ k: 'nabe', i: i % 3 });
+    return p;
+  }
+  if (!Array.isArray(S.pool)) S.pool = buildPool();
+
+  // ルーレットの区切り（くじ：残りのくじ1本＝1区切り／確率：闇鍋と普通の鍋3種）
+  function segments() {
+    if (S.mode === 'lots') {
+      // 闇鍋と普通の鍋が隣り合うように並べる（見た目のため。当たりやすさは本数で決まる）
+      const y = S.pool.filter(x => x.k === 'yami'), n = S.pool.filter(x => x.k !== 'yami');
+      const out = []; let yi = 0, ni = 0;
+      while (yi < y.length || ni < n.length) {
+        const wantY = y.length - yi > 0 && (ni >= n.length || (yi + 1) / y.length <= (ni + 1) / Math.max(1, n.length));
+        out.push(wantY ? y[yi++] : n[ni++]);
+      }
+      return out.map(x => ({ ...x, w: 1 }));
+    }
+    const pY = S.nTables ? Math.min(S.nYami, S.nTables) / S.nTables : 0;
+    const segs = [];
+    // 確率どおりの面積で、闇鍋・鍋①・闇鍋・鍋②… と交互に置く
+    const pieces = 6;
+    for (let i = 0; i < pieces; i++) {
+      if (pY > 0) segs.push({ k: 'yami', w: pY / pieces });
+      segs.push({ k: 'nabe', i: i % 3, w: (1 - pY) / pieces });
+    }
+    return segs;
+  }
+  const labelOf = s => s.k === 'yami' ? '闇鍋' : S.pots[s.i] || '鍋';
+  const COLORS = ['#c9692f', '#b98a3e', '#8f5a35'];
+
+  // 描画
+  const cv = $('wheel'), ctx = cv.getContext('2d');
+  let angle = 0, spinning = false;
+  function draw() {
+    const segs = segments(), W = cv.width, R = W / 2 - 8, c = W / 2;
+    ctx.clearRect(0, 0, W, W);
+    ctx.save(); ctx.translate(c, c); ctx.rotate(angle);
+    const total = segs.reduce((a, s) => a + s.w, 0) || 1;
+    let a0 = -Math.PI / 2;
+    if (!segs.length) {
+      ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fillStyle = '#2a211c'; ctx.fill();
+    }
+    segs.forEach(s => {
+      const da = s.w / total * Math.PI * 2, a1 = a0 + da;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, a0, a1); ctx.closePath();
+      ctx.fillStyle = s.k === 'yami' ? '#0b0a10' : COLORS[s.i % 3];
+      ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#15110f'; ctx.stroke();
+      if (s.k === 'yami') { // 闇鍋は紫の縁取り
+        ctx.beginPath(); ctx.arc(0, 0, R - 6, a0 + 0.01, a1 - 0.01); ctx.lineWidth = 6; ctx.strokeStyle = '#5b3d8a'; ctx.stroke();
+      }
+      ctx.save(); ctx.rotate(a0 + da / 2);
+      ctx.fillStyle = s.k === 'yami' ? '#c9a3f5' : '#1a0f08';
+      const fs = Math.max(22, Math.min(46, da * R * 0.42));
+      ctx.font = `${fs}px "Dela Gothic One", sans-serif`; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(labelOf(s), R - 26, 0);
+      ctx.restore();
+      a0 = a1;
+    });
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(c, c, R, 0, Math.PI * 2); ctx.lineWidth = 10; ctx.strokeStyle = '#3a2e28'; ctx.stroke();
+  }
+
+  // 回す：先に結果をくじ（または確率）で決めてから、その区切りで止まるように回す
+  function spin() {
+    if (spinning) return;
+    keepAwake();
+    const segs = segments(); if (!segs.length) return;
+    const total = segs.reduce((a, s) => a + s.w, 0);
+    let r = Math.random() * total, idx = 0;
+    for (; idx < segs.length; idx++) { r -= segs[idx].w; if (r <= 0) break; }
+    idx = Math.min(idx, segs.length - 1);
+    let start = 0; for (let i = 0; i < idx; i++) start += segs[i].w;
+    const mid = (start + segs[idx].w * (0.2 + Math.random() * 0.6)) / total * Math.PI * 2;
+    // 区切りは真上（-90°）から時計回り。真上の針に mid が来る角度
+    const target = -mid;
+    const cur = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    let delta = ((target - cur) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    delta += Math.PI * 2 * (reduce ? 1 : 6);
+    const from = angle, dur = reduce ? 600 : 4800, t0 = performance.now();
+    spinning = true; $('spinBtn').disabled = true; $('hub').textContent = '…';
+    const ease = t => 1 - Math.pow(1 - t, 4);
+    (function step(now) {
+      const t = Math.min(1, (now - t0) / dur);
+      angle = from + delta * ease(t); draw();
+      if (t < 1) requestAnimationFrame(step);
+      else { spinning = false; finish(segs[idx]); }
+    })(t0);
+  }
+
+  let pending = null;
+  function finish(seg) {
+    const team = S.team, other = 1 - team;
+    pending = { t: Date.now(), table: S.table, team, k: seg.k, i: seg.i, act: null };
+    // くじはここで1本減らす（保存は対応を選んだ時）
+    if (S.mode === 'lots') {
+      const j = S.pool.findIndex(x => x.k === seg.k && (seg.k === 'yami' || x.i === seg.i));
+      if (j >= 0) S.pool.splice(j, 1);
+    }
+    const card = $('card');
+    $('resWho').textContent = `${S.table}卓（${S.teams[team]}）`;
+    if (seg.k === 'yami') {
+      card.classList.add('is-yami');
+      $('resBig').textContent = '闇鍋';
+      $('resSub').textContent = `${S.teams[other]}が作った闇鍋です`;
+      $('resActs').innerHTML = '';
+      [['respin', 'オリ白で振り直し'], ['tanto', '担当が代わりに食べる'], ['eat', 'そのまま食べる']].forEach(([a, l], n) => {
+        const b = document.createElement('button'); b.textContent = l; if (n === 1) b.className = 'primary';
+        b.onclick = () => commit(a); $('resActs').appendChild(b);
+      });
+      $('resNote').textContent = 'オリ白を入れたら、この卓だけもう一度回します。';
+    } else {
+      card.classList.remove('is-yami');
+      $('resBig').textContent = S.pots[seg.i] || '鍋';
+      $('resSub').textContent = '普通の鍋です';
+      $('resActs').innerHTML = '';
+      const b = document.createElement('button'); b.textContent = '閉じる'; b.className = 'primary'; b.onclick = () => commit('nabe');
+      $('resActs').appendChild(b);
+      $('resNote').textContent = '';
+    }
+    $('result').hidden = false; $('resActs').querySelector('button').focus();
+    $('hub').textContent = '回す';
+  }
+  function commit(act) {
+    if (!pending) return;
+    pending.act = act;
+    if (act === 'respin' && S.mode === 'lots' && S.returnAvoided) S.pool.push({ k: 'yami' });
+    S.log.push(pending); pending = null;
+    save(); $('result').hidden = true;
+    // オリ白で振り直し：同じ卓のまま、もう一度回す
+    if (act === 'respin') { render(); setTimeout(spin, 400); return; }
+    if (S.table < S.nTables) S.table += 1;   // 次の卓へ
+    render();
+  }
+
+  // 画面
+  function render() {
+    // 卓の選択
+    const sel = $('table'); sel.innerHTML = '';
+    for (let i = 1; i <= S.nTables; i++) {
+      const done = S.log.some(l => l.table === i);
+      const o = document.createElement('option'); o.value = i; o.textContent = `${i}卓${done ? '（済）' : ''}`; sel.appendChild(o);
+    }
+    sel.value = Math.min(S.table, S.nTables);
+    // チーム
+    const ts = $('teamSeg'); ts.innerHTML = '';
+    S.teams.forEach((n, i) => { const b = document.createElement('button'); b.textContent = n; b.setAttribute('aria-pressed', String(S.team === i)); b.onclick = () => { S.team = i; save(); render(); }; ts.appendChild(b); });
+    $('madeBy').textContent = `闇鍋が出たら、${S.teams[1 - S.team]}が作った闇鍋を食べます。`;
+    // 回し方
+    document.querySelectorAll('#modeSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode)));
+    $('nTables').value = S.nTables; $('nYami').value = S.nYami;
+    ['pot1', 'pot2', 'pot3'].forEach((id, i) => { if (document.activeElement !== $(id)) $(id).value = S.pots[i]; });
+    if (document.activeElement !== $('teamA')) $('teamA').value = S.teams[0];
+    if (document.activeElement !== $('teamB')) $('teamB').value = S.teams[1];
+    $('returnAvoided').checked = !!S.returnAvoided;
+    const pY = S.nTables ? Math.round(Math.min(S.nYami, S.nTables) / S.nTables * 100) : 0;
+    $('probHint').textContent = `闇鍋が出る割合 ${pY}%`;
+    // 残り
+    if (S.mode === 'lots') {
+      const y = S.pool.filter(x => x.k === 'yami').length;
+      $('remain').innerHTML = `残りのくじ <b>${S.pool.length}</b> 本（うち闇鍋 <b>${y}</b>）`;
+    } else $('remain').innerHTML = `闇鍋が出る割合 <b>${pY}%</b>`;
+    const empty = S.mode === 'lots' && S.pool.length === 0;
+    $('spinBtn').disabled = spinning || empty; $('emptyMsg').hidden = !empty;
+    // 集計
+    const yami = S.log.filter(l => l.k === 'yami');
+    const st = [['回した卓', S.log.length], ['闇鍋', yami.length], ['オリ白で振り直し', yami.filter(l => l.act === 'respin').length], ['担当が食べた', yami.filter(l => l.act === 'tanto').length]];
+    $('stats').innerHTML = st.map(([k, v]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join('');
+    // 記録
+    if (!S.log.length) { $('logBox').innerHTML = '<p class="hint" style="padding-top:8px">回した結果がここにたまります。卓とチームを選んで「回す」を押してください。</p>'; }
+    else {
+      const actTxt = { respin: '<span class="tag avoid">オリ白で振り直し</span>', tanto: '担当が食べた', eat: 'そのまま食べた', nabe: '' };
+      $('logBox').innerHTML = '<table><thead><tr><th>時刻</th><th>卓</th><th>チーム</th><th>結果</th><th>対応</th></tr></thead><tbody>' +
+        S.log.slice().reverse().map(l => {
+          const d = new Date(l.t), tm = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+          const res = l.k === 'yami' ? `<span class="tag yami">闇鍋（${esc(S.teams[1 - l.team])}作）</span>` : `<span class="tag nabe">${esc(S.pots[l.i] || '鍋')}</span>`;
+          return `<tr><td>${tm}</td><td>${l.table}</td><td>${esc(S.teams[l.team])}</td><td>${res}</td><td>${actTxt[l.act] || ''}</td></tr>`;
+        }).join('') + '</tbody></table>';
+    }
+    draw();
+  }
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // 操作
+  $('spinBtn').onclick = spin;
+  $('table').onchange = e => { S.table = +e.target.value; save(); render(); };
+  document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => { S.mode = b.dataset.mode; S.pool = buildPool(); save(); render(); });
+  const num = (v, lo, hi, d) => { v = parseInt(v, 10); return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
+  $('nTables').onchange = e => { S.nTables = num(e.target.value, 1, 40, S.nTables); S.nYami = Math.min(S.nYami, S.nTables); S.table = Math.min(S.table, S.nTables); S.pool = buildPool(); save(); render(); };
+  $('nYami').onchange = e => { S.nYami = num(e.target.value, 0, S.nTables, S.nYami); S.pool = buildPool(); save(); render(); };
+  ['pot1', 'pot2', 'pot3'].forEach((id, i) => $(id).oninput = e => { S.pots[i] = e.target.value.trim() || `鍋${'①②③'[i]}`; save(); draw(); });
+  ['pot1', 'pot2', 'pot3'].forEach(id => $(id).onchange = () => render());
+  $('teamA').oninput = e => { S.teams[0] = e.target.value.trim() || 'チームA'; save(); };
+  $('teamB').oninput = e => { S.teams[1] = e.target.value.trim() || 'チームB'; save(); };
+  ['teamA', 'teamB'].forEach(id => $(id).onchange = () => render());
+  $('returnAvoided').onchange = e => { S.returnAvoided = e.target.checked; save(); };
+  $('refill').onclick = () => { S.pool = buildPool(); save(); render(); };
+  $('undo').onclick = () => {
+    const l = S.log.pop(); if (!l) return;
+    if (S.mode === 'lots') { S.pool.push(l.k === 'yami' ? { k: 'yami' } : { k: 'nabe', i: l.i }); if (l.act === 'respin' && S.returnAvoided) { const j = S.pool.findIndex(x => x.k === 'yami'); if (j >= 0) S.pool.splice(j, 1); } }
+    S.table = l.table; save(); render();
+  };
+  // リセットは2段階（押し間違い防止）
+  const RESET_BTN = '<button class="ghost small danger" id="reset">記録とくじをリセット</button>';
+  function askReset() {
+    const box = $('resetBox');
+    box.innerHTML = '本当にリセットしますか？ <button class="ghost small danger" id="resetYes">リセットする</button><button class="ghost small" id="resetNo">やめる</button>';
+    $('resetYes').onclick = () => { S.log = []; S.pool = buildPool(); S.table = 1; save(); restoreReset(); render(); };
+    $('resetNo').onclick = restoreReset;
+  }
+  function restoreReset() { $('resetBox').innerHTML = RESET_BTN; $('reset').onclick = askReset; }
+  $('reset').onclick = askReset;
+
+  // 画面を消さない（営業中に端末が暗くならないように。断られても動く）
+  let lock = null;
+  function keepAwake() {
+    try { if (navigator.wakeLock && !lock) navigator.wakeLock.request('screen').then(l => { lock = l; l.addEventListener('release', () => { lock = null; }); }).catch(() => {}); } catch (e) {}
+  }
+  keepAwake();
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+
+  document.fonts && document.fonts.ready.then(draw);
+  render();
+
+  // オフラインでも開けるように
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+})();
+</script>
+</body>
+</html>
