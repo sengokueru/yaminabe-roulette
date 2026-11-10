@@ -55,6 +55,7 @@ canvas { width: 100%; height: 100%; display: block; }
 .hub { position: absolute; inset: 0; margin: auto; width: 26%; height: 26%; border-radius: 50%; background: var(--panel);
   border: 3px solid var(--line); display: grid; place-items: center; font-family: var(--font-display); font-size: clamp(12px, 3.4vw, 18px); color: var(--broth); text-align: center; line-height: 1.2; pointer-events: none; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.setup { margin: 0; border: 1px solid var(--ember); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
 .label { font-size: 12px; color: var(--sub); letter-spacing: .08em; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 input[type=number], input[type=text], select { background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; min-width: 0; }
@@ -69,7 +70,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .spin:disabled { opacity: .45; cursor: default; }
 .ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font: inherit; }
 .ghost.small { font-size: 13px; padding: 6px 10px; }
+.ghost:disabled { opacity: .45; cursor: default; }
 .danger { color: #f09a8a; border-color: #5a332c; }
+.start { background: var(--ember); color: #1a0f08; border: 0; border-radius: 8px; padding: 10px 14px; font: inherit; font-weight: 700; }
 
 /* 結果 */
 .result { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(8,6,5,.86); padding: 16px; z-index: 10; }
@@ -121,6 +124,7 @@ details.settings[open] summary { margin-bottom: 10px; }
     </section>
 
     <section class="panel" aria-label="回す卓">
+      <p class="setup" id="setupMsg" hidden>はじめに、下の「設定」でチーム名・卓数・闇鍋のくじの数・鍋の名前を入れて、「この設定で始める」を押してください。</p>
       <div class="row">
         <div style="display:grid;gap:4px">
           <label class="label" for="table">卓</label>
@@ -139,18 +143,17 @@ details.settings[open] summary { margin-bottom: 10px; }
       <div class="log" id="logBox"></div>
       <div class="row" style="justify-content:space-between">
         <button class="ghost small" id="undo">1つ前を取り消す</button>
+        <button class="ghost small" id="copy">記録をコピー</button>
         <span class="confirm" id="resetBox"><button class="ghost small danger" id="reset">記録とくじをリセット</button></span>
       </div>
 
-      <details class="settings">
+      <details class="settings" id="settings">
         <summary>設定（卓数・闇鍋の数・鍋の名前・チーム名）</summary>
         <div style="display:grid;gap:12px">
           <div class="row">
-            <span class="label" style="width:100%">回し方</span>
-            <div class="seg" id="modeSeg" role="group" aria-label="回し方">
-              <button data-mode="lots">くじ（卓数分・引いたら減る）</button>
-              <button data-mode="wheel">毎回同じ確率</button>
-            </div>
+            <label for="teamA">チーム名</label>
+            <input type="text" id="teamA" maxlength="10" style="width:120px">
+            <input type="text" id="teamB" maxlength="10" style="width:120px">
           </div>
           <div class="row">
             <label for="nTables">卓数</label><input type="number" id="nTables" min="1" max="40" inputmode="numeric">
@@ -158,18 +161,23 @@ details.settings[open] summary { margin-bottom: 10px; }
             <span class="hint" id="probHint"></span>
           </div>
           <div class="row">
-            <label for="pot1">普通の鍋</label>
-            <input type="text" id="pot1" maxlength="12" style="width:110px">
-            <input type="text" id="pot2" maxlength="12" style="width:110px">
-            <input type="text" id="pot3" maxlength="12" style="width:110px">
+            <label for="nPots">普通の鍋</label>
+            <select id="nPots"><option value="1">1種類</option><option value="2">2種類</option><option value="3">3種類</option></select>
+            <input type="text" id="pot1" maxlength="12" style="width:110px" aria-label="普通の鍋 1つ目の名前">
+            <input type="text" id="pot2" maxlength="12" style="width:110px" aria-label="普通の鍋 2つ目の名前">
+            <input type="text" id="pot3" maxlength="12" style="width:110px" aria-label="普通の鍋 3つ目の名前">
           </div>
           <div class="row">
-            <label for="teamA">チーム名</label>
-            <input type="text" id="teamA" maxlength="10" style="width:110px">
-            <input type="text" id="teamB" maxlength="10" style="width:110px">
+            <span class="label" style="width:100%">回し方</span>
+            <div class="seg" id="modeSeg" role="group" aria-label="回し方">
+              <button data-mode="lots">くじ（卓数分・引いたら減る）</button>
+              <button data-mode="wheel">毎回同じ確率</button>
+            </div>
           </div>
           <label class="row" style="gap:6px"><input type="checkbox" id="returnAvoided"> オリ白で振り直した闇鍋は、くじに戻す</label>
-          <p class="hint">設定を変えると、くじは入れ直しになります（記録は残ります）。設定と記録はこの端末にだけ保存されます。</p>
+          <label class="row" style="gap:6px"><input type="checkbox" id="showTanto"> 闇鍋が出た時に「担当が代わりに食べる」も選べるようにする</label>
+          <div class="row"><button class="start" id="startBtn">この設定で始める</button></div>
+          <p class="hint">設定を変えると、くじは入れ直しになります（記録は残ります）。設定と記録はこの端末にだけ保存されます。<span id="ver"></span></p>
         </div>
       </details>
     </section>
@@ -188,34 +196,43 @@ details.settings[open] summary { margin-bottom: 10px; }
 
 <script>
 (() => {
+  const VER = '2';
   const KEY = 'yaminabe-roulette-v2';
-  const DEF = { mode: 'lots', nTables: 10, nYami: 3, pots: ['鍋①', '鍋②', '鍋③'], teams: ['チームA', 'チームB'], returnAvoided: true, pool: null, log: [], table: 1, team: 0 };
-  let S = load();
+  // held：オリ白でよけた闇鍋のくじ（次に引き終わるまで、くじの外に置く）／again：次の1回は振り直し
+  const DEF = { mode: 'lots', nTables: 10, nYami: 3, nPots: 3, pots: ['鍋①', '鍋②', '鍋③'], teams: ['チームA', 'チームB'], returnAvoided: true, showTanto: false, setup: false, pool: null, held: 0, again: false, log: [], table: 1, team: 0 };
   const $ = id => document.getElementById(id);
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let S = load();
 
   function load() {
-    try {
-      const o = JSON.parse(localStorage.getItem(KEY) || 'null');
-      if (o && typeof o === 'object') return { ...DEF, ...o, pots: Array.isArray(o.pots) ? o.pots : DEF.pots.slice(), teams: Array.isArray(o.teams) ? o.teams : DEF.teams.slice(), log: Array.isArray(o.log) ? o.log : [] };
-    } catch (e) {}
-    return { ...DEF, pots: DEF.pots.slice(), teams: DEF.teams.slice(), log: [] };
+    let o = null;
+    try { o = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+    const s = { ...DEF, ...(o && typeof o === 'object' ? o : {}) };
+    s.pots = Array.isArray(s.pots) && s.pots.length === 3 ? s.pots.slice() : DEF.pots.slice();
+    s.teams = Array.isArray(s.teams) && s.teams.length === 2 ? s.teams.slice() : DEF.teams.slice();
+    s.log = Array.isArray(s.log) ? s.log : [];
+    s.nPots = Math.max(1, Math.min(3, parseInt(s.nPots, 10) || 3));
+    s.held = s.held > 0 ? 1 : 0; s.again = !!s.again;
+    return s;
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 
-  // くじの中身：闇鍋 n 本＋残りを普通の鍋3種に順番に割り振る
+  // くじの中身：闇鍋 n 本＋残りを普通の鍋に順番に割り振る
   function buildPool() {
     const p = [];
     const nY = Math.min(S.nYami, S.nTables);
     for (let i = 0; i < nY; i++) p.push({ k: 'yami' });
-    for (let i = 0; i < S.nTables - nY; i++) p.push({ k: 'nabe', i: i % 3 });
+    for (let i = 0; i < S.nTables - nY; i++) p.push({ k: 'nabe', i: i % S.nPots });
     return p;
   }
-  if (!Array.isArray(S.pool)) S.pool = buildPool();
+  function refillPool() { S.pool = buildPool(); S.held = 0; S.again = false; }
+  if (!Array.isArray(S.pool)) refillPool();
 
-  // ルーレットの区切り（くじ：残りのくじ1本＝1区切り／確率：闇鍋と普通の鍋3種）
+  // ルーレットの区切り（くじ：残りのくじ1本＝1区切り／確率：闇鍋と普通の鍋）
   function segments() {
     if (S.mode === 'lots') {
+      // 振り直しなのに他のくじが残っていない時は、普通の鍋だけで回す（くじは減らさない）
+      if (!S.pool.length && S.again) return Array.from({ length: S.nPots }, (_, i) => ({ k: 'nabe', i, w: 1, free: true }));
       // 闇鍋と普通の鍋が隣り合うように並べる（見た目のため。当たりやすさは本数で決まる）
       const y = S.pool.filter(x => x.k === 'yami'), n = S.pool.filter(x => x.k !== 'yami');
       const out = []; let yi = 0, ni = 0;
@@ -227,15 +244,16 @@ details.settings[open] summary { margin-bottom: 10px; }
     }
     const pY = S.nTables ? Math.min(S.nYami, S.nTables) / S.nTables : 0;
     const segs = [];
-    // 確率どおりの面積で、闇鍋・鍋①・闇鍋・鍋②… と交互に置く
+    // 確率どおりの面積で、闇鍋・鍋・闇鍋・鍋… と交互に置く
     const pieces = 6;
     for (let i = 0; i < pieces; i++) {
       if (pY > 0) segs.push({ k: 'yami', w: pY / pieces });
-      segs.push({ k: 'nabe', i: i % 3, w: (1 - pY) / pieces });
+      if (pY < 1) segs.push({ k: 'nabe', i: i % S.nPots, w: (1 - pY) / pieces });
     }
     return segs;
   }
-  const labelOf = s => s.k === 'yami' ? '闇鍋' : S.pots[s.i] || '鍋';
+  const potName = i => S.pots[i] || '鍋';
+  const labelOf = s => s.k === 'yami' ? '闇鍋' : potName(s.i);
   const COLORS = ['#c9692f', '#b98a3e', '#8f5a35'];
 
   // 描画
@@ -272,7 +290,7 @@ details.settings[open] summary { margin-bottom: 10px; }
 
   // 回す：先に結果をくじ（または確率）で決めてから、その区切りで止まるように回す
   function spin() {
-    if (spinning) return;
+    if (spinning || pending) return;
     keepAwake();
     const segs = segments(); if (!segs.length) return;
     const total = segs.reduce((a, s) => a + s.w, 0);
@@ -289,23 +307,33 @@ details.settings[open] summary { margin-bottom: 10px; }
     const from = angle, dur = reduce ? 600 : 4800, t0 = performance.now();
     spinning = true; $('spinBtn').disabled = true; $('hub').textContent = '…';
     const ease = t => 1 - Math.pow(1 - t, 4);
+    let done = false;
+    const end = () => { if (done) return; done = true; angle = from + delta; draw(); spinning = false; finish(segs[idx]); };
     (function step(now) {
+      if (done) return;
       const t = Math.min(1, (now - t0) / dur);
       angle = from + delta * ease(t); draw();
-      if (t < 1) requestAnimationFrame(step);
-      else { spinning = false; finish(segs[idx]); }
+      if (t < 1) requestAnimationFrame(step); else end();
     })(t0);
+    // 画面が裏に回って動きが止まっても、時間で必ず結果を出す
+    setTimeout(end, dur + 500);
   }
 
   let pending = null;
   function finish(seg) {
     const team = S.team, other = 1 - team;
     pending = { t: Date.now(), table: S.table, team, k: seg.k, i: seg.i, act: null };
+    if (seg.free) pending.free = true;
     // くじはここで1本減らす（保存は対応を選んだ時）
     if (S.mode === 'lots') {
-      const j = S.pool.findIndex(x => x.k === seg.k && (seg.k === 'yami' || x.i === seg.i));
-      if (j >= 0) S.pool.splice(j, 1);
+      if (!seg.free) {
+        const j = S.pool.findIndex(x => x.k === seg.k && (seg.k === 'yami' || x.i === seg.i));
+        if (j >= 0) S.pool.splice(j, 1);
+      }
+      // 振り直しの間よけておいた闇鍋のくじを、ここで戻す
+      if (S.held > 0) { S.pool.push({ k: 'yami' }); S.held = 0; }
     }
+    S.again = false;
     const card = $('card');
     $('resWho').textContent = `${S.table}卓（${S.teams[team]}）`;
     if (seg.k === 'yami') {
@@ -313,41 +341,68 @@ details.settings[open] summary { margin-bottom: 10px; }
       $('resBig').textContent = '闇鍋';
       $('resSub').textContent = `${S.teams[other]}が作った闇鍋です`;
       $('resActs').innerHTML = '';
-      [['respin', 'オリ白で振り直し'], ['tanto', '担当が代わりに食べる'], ['eat', 'そのまま食べる']].forEach(([a, l], n) => {
-        const b = document.createElement('button'); b.textContent = l; if (n === 1) b.className = 'primary';
+      const acts = [['respin', 'オリ白で振り直し']];
+      if (S.showTanto) acts.push(['tanto', '担当が代わりに食べる']);
+      acts.push(['eat', 'そのまま食べる']);
+      acts.forEach(([a, l], n) => {
+        const b = document.createElement('button'); b.textContent = l; if (n === 0) b.className = 'primary';
         b.onclick = () => commit(a); $('resActs').appendChild(b);
       });
       $('resNote').textContent = 'オリ白を入れたら、この卓だけもう一度回します。';
+      try { navigator.vibrate && navigator.vibrate([120, 60, 240]); } catch (e) {}
     } else {
       card.classList.remove('is-yami');
-      $('resBig').textContent = S.pots[seg.i] || '鍋';
+      $('resBig').textContent = potName(seg.i);
       $('resSub').textContent = '普通の鍋です';
       $('resActs').innerHTML = '';
       const b = document.createElement('button'); b.textContent = '閉じる'; b.className = 'primary'; b.onclick = () => commit('nabe');
       $('resActs').appendChild(b);
       $('resNote').textContent = '';
     }
-    $('result').hidden = false; $('resActs').querySelector('button').focus();
+    $('result').hidden = false;
     $('hub').textContent = '回す';
   }
   function commit(act) {
     if (!pending) return;
     pending.act = act;
-    if (act === 'respin' && S.mode === 'lots' && S.returnAvoided) S.pool.push({ k: 'yami' });
+    if (act === 'respin') {
+      S.again = true;
+      // 振り直した闇鍋は、次に引き終わるまでくじの外に置く（同じくじをすぐ引かないように）
+      if (S.mode === 'lots' && S.returnAvoided) { S.held = 1; pending.held = true; }
+    }
     S.log.push(pending); pending = null;
     save(); $('result').hidden = true;
     // オリ白で振り直し：同じ卓のまま、もう一度回す
     if (act === 'respin') { render(); setTimeout(spin, 400); return; }
     if (S.table < S.nTables) S.table += 1;   // 次の卓へ
-    render();
+    save(); render();
+  }
+
+  // 記録を文字にする（LINEなどに貼る用）
+  function recordText() {
+    const d = new Date(), pad = n => String(n).padStart(2, '0');
+    const cnt = a => S.log.filter(l => l.act === a).length;
+    const yami = S.log.filter(l => l.k === 'yami').length;
+    const sum = [`回した回数 ${S.log.length}`, `闇鍋 ${yami}`, `オリ白で振り直し ${cnt('respin')}`];
+    if (S.showTanto || cnt('tanto')) sum.push(`担当が食べた ${cnt('tanto')}`);
+    sum.push(`そのまま食べた ${cnt('eat')}`);
+    const actTxt = { respin: ' → オリ白で振り直し', tanto: ' → 担当が食べた', eat: ' → そのまま食べた', nabe: '' };
+    const rows = S.log.map(l => {
+      const t = new Date(l.t);
+      const res = l.k === 'yami' ? `闇鍋（${S.teams[1 - l.team]}作）` : potName(l.i);
+      return `${t.getHours()}:${pad(t.getMinutes())} ${l.table}卓 ${S.teams[l.team]} ${res}${actTxt[l.act] || ''}`;
+    });
+    return [`闇鍋ルーレット 記録（${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${pad(d.getMinutes())} 時点）`, sum.join('／'), '', ...rows].join('\n');
   }
 
   // 画面
   function render() {
+    $('setupMsg').hidden = !!S.setup;
+    $('startBtn').textContent = S.setup ? '設定を閉じる' : 'この設定で始める';
     // 卓の選択
     const sel = $('table'); sel.innerHTML = '';
     for (let i = 1; i <= S.nTables; i++) {
-      const done = S.log.some(l => l.table === i);
+      const done = S.log.some(l => l.table === i && l.act !== 'respin');
       const o = document.createElement('option'); o.value = i; o.textContent = `${i}卓${done ? '（済）' : ''}`; sel.appendChild(o);
     }
     sel.value = Math.min(S.table, S.nTables);
@@ -355,34 +410,37 @@ details.settings[open] summary { margin-bottom: 10px; }
     const ts = $('teamSeg'); ts.innerHTML = '';
     S.teams.forEach((n, i) => { const b = document.createElement('button'); b.textContent = n; b.setAttribute('aria-pressed', String(S.team === i)); b.onclick = () => { S.team = i; save(); render(); }; ts.appendChild(b); });
     $('madeBy').textContent = `闇鍋が出たら、${S.teams[1 - S.team]}が作った闇鍋を食べます。`;
-    // 回し方
+    // 設定
     document.querySelectorAll('#modeSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode)));
-    $('nTables').value = S.nTables; $('nYami').value = S.nYami;
-    ['pot1', 'pot2', 'pot3'].forEach((id, i) => { if (document.activeElement !== $(id)) $(id).value = S.pots[i]; });
+    $('nTables').value = S.nTables; $('nYami').value = S.nYami; $('nPots').value = S.nPots;
+    ['pot1', 'pot2', 'pot3'].forEach((id, i) => { $(id).hidden = i >= S.nPots; if (document.activeElement !== $(id)) $(id).value = S.pots[i]; });
     if (document.activeElement !== $('teamA')) $('teamA').value = S.teams[0];
     if (document.activeElement !== $('teamB')) $('teamB').value = S.teams[1];
     $('returnAvoided').checked = !!S.returnAvoided;
+    $('showTanto').checked = !!S.showTanto;
     const pY = S.nTables ? Math.round(Math.min(S.nYami, S.nTables) / S.nTables * 100) : 0;
     $('probHint').textContent = `闇鍋が出る割合 ${pY}%`;
     // 残り
     if (S.mode === 'lots') {
       const y = S.pool.filter(x => x.k === 'yami').length;
-      $('remain').innerHTML = `残りのくじ <b>${S.pool.length}</b> 本（うち闇鍋 <b>${y}</b>）`;
+      $('remain').innerHTML = `残りのくじ <b>${S.pool.length}</b> 本（うち闇鍋 <b>${y}</b>）${S.again ? '／振り直し中' : ''}`;
     } else $('remain').innerHTML = `闇鍋が出る割合 <b>${pY}%</b>`;
-    const empty = S.mode === 'lots' && S.pool.length === 0;
+    const empty = S.mode === 'lots' && S.pool.length === 0 && !S.again;
     $('spinBtn').disabled = spinning || empty; $('emptyMsg').hidden = !empty;
     // 集計
     const yami = S.log.filter(l => l.k === 'yami');
-    const st = [['回した卓', S.log.length], ['闇鍋', yami.length], ['オリ白で振り直し', yami.filter(l => l.act === 'respin').length], ['担当が食べた', yami.filter(l => l.act === 'tanto').length]];
+    const st = [['回した回数', S.log.length], ['闇鍋', yami.length], ['オリ白で振り直し', yami.filter(l => l.act === 'respin').length],
+      S.showTanto ? ['担当が食べた', yami.filter(l => l.act === 'tanto').length] : ['そのまま食べた', yami.filter(l => l.act === 'eat').length]];
     $('stats').innerHTML = st.map(([k, v]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join('');
     // 記録
+    $('copy').disabled = !S.log.length; $('undo').disabled = !S.log.length;
     if (!S.log.length) { $('logBox').innerHTML = '<p class="hint" style="padding-top:8px">回した結果がここにたまります。卓とチームを選んで「回す」を押してください。</p>'; }
     else {
       const actTxt = { respin: '<span class="tag avoid">オリ白で振り直し</span>', tanto: '担当が食べた', eat: 'そのまま食べた', nabe: '' };
       $('logBox').innerHTML = '<table><thead><tr><th>時刻</th><th>卓</th><th>チーム</th><th>結果</th><th>対応</th></tr></thead><tbody>' +
         S.log.slice().reverse().map(l => {
           const d = new Date(l.t), tm = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
-          const res = l.k === 'yami' ? `<span class="tag yami">闇鍋（${esc(S.teams[1 - l.team])}作）</span>` : `<span class="tag nabe">${esc(S.pots[l.i] || '鍋')}</span>`;
+          const res = l.k === 'yami' ? `<span class="tag yami">闇鍋（${esc(S.teams[1 - l.team])}作）</span>` : `<span class="tag nabe">${esc(potName(l.i))}</span>`;
           return `<tr><td>${tm}</td><td>${l.table}</td><td>${esc(S.teams[l.team])}</td><td>${res}</td><td>${actTxt[l.act] || ''}</td></tr>`;
         }).join('') + '</tbody></table>';
     }
@@ -393,28 +451,54 @@ details.settings[open] summary { margin-bottom: 10px; }
   // 操作
   $('spinBtn').onclick = spin;
   $('table').onchange = e => { S.table = +e.target.value; save(); render(); };
-  document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => { S.mode = b.dataset.mode; S.pool = buildPool(); save(); render(); });
+  document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => { if (spinning) return; S.mode = b.dataset.mode; refillPool(); save(); render(); });
   const num = (v, lo, hi, d) => { v = parseInt(v, 10); return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
-  $('nTables').onchange = e => { S.nTables = num(e.target.value, 1, 40, S.nTables); S.nYami = Math.min(S.nYami, S.nTables); S.table = Math.min(S.table, S.nTables); S.pool = buildPool(); save(); render(); };
-  $('nYami').onchange = e => { S.nYami = num(e.target.value, 0, S.nTables, S.nYami); S.pool = buildPool(); save(); render(); };
+  $('nTables').onchange = e => { S.nTables = num(e.target.value, 1, 40, S.nTables); S.nYami = Math.min(S.nYami, S.nTables); S.table = Math.min(S.table, S.nTables); refillPool(); save(); render(); };
+  $('nYami').onchange = e => { S.nYami = num(e.target.value, 0, S.nTables, S.nYami); refillPool(); save(); render(); };
+  $('nPots').onchange = e => { S.nPots = num(e.target.value, 1, 3, S.nPots); refillPool(); save(); render(); };
   ['pot1', 'pot2', 'pot3'].forEach((id, i) => $(id).oninput = e => { S.pots[i] = e.target.value.trim() || `鍋${'①②③'[i]}`; save(); draw(); });
   ['pot1', 'pot2', 'pot3'].forEach(id => $(id).onchange = () => render());
   $('teamA').oninput = e => { S.teams[0] = e.target.value.trim() || 'チームA'; save(); };
   $('teamB').oninput = e => { S.teams[1] = e.target.value.trim() || 'チームB'; save(); };
   ['teamA', 'teamB'].forEach(id => $(id).onchange = () => render());
   $('returnAvoided').onchange = e => { S.returnAvoided = e.target.checked; save(); };
-  $('refill').onclick = () => { S.pool = buildPool(); save(); render(); };
+  $('showTanto').onchange = e => { S.showTanto = e.target.checked; save(); render(); };
+  $('startBtn').onclick = () => { S.setup = true; save(); $('settings').open = false; render(); window.scrollTo(0, 0); };
+  $('refill').onclick = () => { refillPool(); save(); render(); };
   $('undo').onclick = () => {
+    if (spinning || pending) return;
     const l = S.log.pop(); if (!l) return;
-    if (S.mode === 'lots') { S.pool.push(l.k === 'yami' ? { k: 'yami' } : { k: 'nabe', i: l.i }); if (l.act === 'respin' && S.returnAvoided) { const j = S.pool.findIndex(x => x.k === 'yami'); if (j >= 0) S.pool.splice(j, 1); } }
+    if (S.mode === 'lots') {
+      if (l.act === 'respin') { S.held = 0; S.pool.push({ k: 'yami' }); }   // よけた闇鍋のくじを戻す
+      else if (!l.free) S.pool.push(l.k === 'yami' ? { k: 'yami' } : { k: 'nabe', i: l.i });
+    }
+    // 1つ前が「オリ白で振り直し」なら、振り直しの途中に戻す
+    const p = S.log[S.log.length - 1];
+    S.again = !!(p && p.act === 'respin');
+    if (S.mode === 'lots' && S.again && p.held) {
+      const j = S.pool.findIndex(x => x.k === 'yami');
+      if (j >= 0) { S.pool.splice(j, 1); S.held = 1; }
+    }
     S.table = l.table; save(); render();
+  };
+  $('copy').onclick = async () => {
+    const t = recordText(); let ok = false;
+    try { await navigator.clipboard.writeText(t); ok = true; } catch (e) {
+      try {
+        const ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove();
+      } catch (e2) {}
+    }
+    const b = $('copy'); b.textContent = ok ? 'コピーしました' : 'コピーできませんでした';
+    setTimeout(() => { b.textContent = '記録をコピー'; }, 1600);
   };
   // リセットは2段階（押し間違い防止）
   const RESET_BTN = '<button class="ghost small danger" id="reset">記録とくじをリセット</button>';
   function askReset() {
+    if (spinning) return;
     const box = $('resetBox');
     box.innerHTML = '本当にリセットしますか？ <button class="ghost small danger" id="resetYes">リセットする</button><button class="ghost small" id="resetNo">やめる</button>';
-    $('resetYes').onclick = () => { S.log = []; S.pool = buildPool(); S.table = 1; save(); restoreReset(); render(); };
+    $('resetYes').onclick = () => { if (spinning) return; S.log = []; refillPool(); S.table = 1; save(); restoreReset(); render(); };
     $('resetNo').onclick = restoreReset;
   }
   function restoreReset() { $('resetBox').innerHTML = RESET_BTN; $('reset').onclick = askReset; }
@@ -428,6 +512,8 @@ details.settings[open] summary { margin-bottom: 10px; }
   keepAwake();
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
 
+  $('ver').textContent = ` 版 ${VER}`;
+  if (!S.setup) $('settings').open = true;
   document.fonts && document.fonts.ready.then(draw);
   render();
 

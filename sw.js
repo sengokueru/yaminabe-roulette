@@ -1,6 +1,6 @@
 // 公開のたびに版数を上げること（上げないと古い版が配信され続ける）
 const PREFIX = 'yaminabe-' + encodeURIComponent(self.registration.scope) + '-';
-const CACHE = PREFIX + 'v1';
+const CACHE = PREFIX + 'v2';
 const FONTS = PREFIX + 'fonts';
 const ASSETS = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
