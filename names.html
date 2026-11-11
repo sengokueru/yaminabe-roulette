@@ -138,7 +138,7 @@ details[open] summary { margin-bottom:10px; }
   const T = () => S.teams[S.cur];
   const active = () => { const a = T().names.slice(); T().out.forEach(o => { const j = a.indexOf(o); if (j >= 0) a.splice(j, 1); }); return a; };
   // 「短い名前｜当たった時の説明」と書くと、輪には短い名前、結果には説明も出す
-  // 名前の最後に「*1.25」と書くと、その分だけ当たりやすくなる（輪の幅も同じ割合で広くなる）
+  // 名前の最後に「*1.25」と書くと、その分だけ当たりやすくなる（輪の幅は全員同じ）
   const wOf = n => { const m = /\*([0-9.]+)\s*$/.exec(n); const v = m ? parseFloat(m[1]) : 1; return v > 0 && v <= 20 ? v : 1; };
   const base = n => n.replace(/\*[0-9.]+\s*$/, '');
   const label = n => base(n).split('｜')[0]; const desc = n => base(n).split('｜')[1] || '';
@@ -153,7 +153,7 @@ details[open] summary { margin-bottom:10px; }
     if (!a.length) { ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fillStyle = '#2a211c'; ctx.fill(); }
     const tot = a.reduce((x, n) => x + wOf(n), 0) || 1; let a0 = -Math.PI / 2;
     a.forEach((n, i) => {
-      const da = Math.PI * 2 * wOf(n) / tot;
+      const da = Math.PI * 2 / (a.length || 1);   // 幅は全員同じ。当たりやすさは回す時だけ使う
       ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, a0, a0 + da); ctx.closePath();
       // 隣と同じ色にならないようにする（人数が色数の倍数+1の時の最後だけずらす）
       let ci = i % COLORS.length; if (i === a.length - 1 && ci === 0 && a.length > 1) ci = 1;
@@ -177,8 +177,7 @@ details[open] summary { margin-bottom:10px; }
     let r = Math.random() * tot, idx = 0;
     for (; idx < a.length; idx++) { r -= wOf(a[idx]); if (r <= 0) break; }
     idx = Math.min(idx, a.length - 1);
-    let st = 0; for (let i = 0; i < idx; i++) st += wOf(a[i]);
-    const mid = (st + wOf(a[idx]) * (0.2 + Math.random() * 0.6)) / tot * Math.PI * 2;
+    const mid = (idx + 0.2 + Math.random() * 0.6) * (Math.PI * 2 / a.length);
     const cur = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     let delta = ((-mid - cur) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
     delta += Math.PI * 2 * (reduce ? 1 : 6);
