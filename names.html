@@ -51,6 +51,7 @@ details[open] summary { margin-bottom:10px; }
 .card { width:min(560px,100%); background:#0b0a10; border:1px solid #3b2b55; border-radius:14px; padding:28px 20px; display:grid; gap:14px; text-align:center; }
 .card .who { color:var(--sub); font-size:14px; }
 .card .big { font-family:var(--font-display); font-size:clamp(40px,13vw,80px); line-height:1.15; color:var(--yami-ink); text-shadow:0 0 24px rgba(185,140,240,.45); overflow-wrap:anywhere; }
+.card .sub { font-size:clamp(16px,4.5vw,22px); font-weight:700; }
 .card button { padding:12px; border-radius:10px; font:inherit; font-weight:700; border:0; background:var(--ember); color:#1a0f08; cursor:pointer; }
 </style>
 </head>
@@ -84,7 +85,7 @@ details[open] summary { margin-bottom:10px; }
         <summary>設定（チーム名・名前）</summary>
         <div style="display:grid;gap:10px">
           <label>チーム名<input type="text" id="teamName" maxlength="12"></label>
-          <label>名前（1行に1人）<textarea id="names" spellcheck="false"></textarea></label>
+          <label>名前（1行に1人。「姫が指名｜説明」の形も可）<textarea id="names" spellcheck="false"></textarea></label>
           <p class="hint">書き換えるとすぐルーレットに入ります。この端末にだけ保存されます。</p>
         </div>
       </details>
@@ -96,6 +97,7 @@ details[open] summary { margin-bottom:10px; }
   <div class="card" role="dialog" aria-modal="true" aria-labelledby="resBig">
     <div class="who" id="resWho"></div>
     <div class="big" id="resBig"></div>
+    <div class="sub" id="resSub" hidden></div>
     <button id="resClose">閉じる</button>
   </div>
 </div>
@@ -134,7 +136,9 @@ details[open] summary { margin-bottom:10px; }
   })();
 
   const T = () => S.teams[S.cur];
-  const active = () => T().names.filter(n => !T().out.includes(n));
+  const active = () => { const a = T().names.slice(); T().out.forEach(o => { const j = a.indexOf(o); if (j >= 0) a.splice(j, 1); }); return a; };
+  // 「短い名前｜当たった時の説明」と書くと、輪には短い名前、結果には説明も出す
+  const label = n => n.split('｜')[0]; const desc = n => n.split('｜')[1] || '';
   const COLORS = ['#c9692f', '#b98a3e', '#8f5a35', '#5b3d8a'];
   const cv = $('wheel'), ctx = cv.getContext('2d');
   let angle = 0, spinning = false;
@@ -154,7 +158,7 @@ details[open] summary { margin-bottom:10px; }
       ctx.fillStyle = ci === 3 ? '#f3e9df' : '#1a0f08';
       let fs = Math.max(20, Math.min(48, da * R * 0.42));
       ctx.font = `${fs}px "Dela Gothic One", sans-serif`;
-      const maxW = R * 0.66; const w = ctx.measureText(n).width;
+      const maxW = R * 0.66; n = label(n); const w = ctx.measureText(n).width;
       if (w > maxW) { fs = Math.max(14, fs * maxW / w); ctx.font = `${fs}px "Dela Gothic One", sans-serif`; }
       ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText(n, R - 24, 0);
       ctx.restore(); a0 += da;
@@ -179,7 +183,7 @@ details[open] summary { margin-bottom:10px; }
     setTimeout(end, dur + 500);   // 画面が裏に回っても結果を出す
   }
   function finish(name) {
-    $('resWho').textContent = T().name; $('resBig').textContent = name; $('result').hidden = false;
+    $('resWho').textContent = T().name; $('resBig').textContent = label(name); $('resSub').textContent = desc(name); $('resSub').hidden = !desc(name); $('result').hidden = false;
     T().log.push(name); if (S.removeHit) T().out.push(name);
     save();
     try { navigator.vibrate && navigator.vibrate([120, 60, 240]); } catch (e) {}
@@ -194,7 +198,7 @@ details[open] summary { margin-bottom:10px; }
     $('removeHit').checked = S.removeHit;
     if (document.activeElement !== $('teamName')) $('teamName').value = t.name;
     if (document.activeElement !== $('names')) $('names').value = t.names.join('\n');
-    $('log').innerHTML = t.log.map(n => `<li><b>${esc(n)}</b></li>`).join('');
+    $('log').innerHTML = t.log.map(n => `<li><b>${esc(label(n))}</b></li>`).join('');
     $('undo').disabled = !t.log.length;
     if (!t.names.length) $('settings').open = true;
     draw();
@@ -206,7 +210,7 @@ details[open] summary { margin-bottom:10px; }
   $('removeHit').onchange = e => { S.removeHit = e.target.checked; save(); };
   $('teamName').oninput = e => { T().name = e.target.value.trim() || (S.cur ? 'チームB' : 'チームA'); save(); };
   $('teamName').onchange = render;
-  $('names').oninput = e => { if (spinning) return; const t = T(); t.names = [...new Set(e.target.value.split('\n').map(x => x.trim()).filter(Boolean))]; t.out = t.out.filter(n => t.names.includes(n)); save(); $('remain').textContent = `${t.name}：${active().length}人（全${t.names.length}人）`; $('spinBtn').disabled = !active().length; draw(); };
+  $('names').oninput = e => { if (spinning) return; const t = T(); t.names = e.target.value.split('\n').map(x => x.trim()).filter(Boolean); t.out = t.out.filter(n => t.names.includes(n)); save(); $('remain').textContent = `${t.name}：${active().length}人（全${t.names.length}人）`; $('spinBtn').disabled = !active().length; draw(); };
   $('names').onchange = render;
   $('undo').onclick = () => { if (spinning) return; const t = T(); const n = t.log.pop(); if (n === undefined) return; const j = t.out.lastIndexOf(n); if (j >= 0) t.out.splice(j, 1); save(); render(); };
   $('reset').onclick = () => { if (spinning) return; const t = T(); t.out = []; t.log = []; save(); render(); };
