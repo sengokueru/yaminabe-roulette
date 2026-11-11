@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>名前ルーレット｜闇鍋ルーレット</title>
+<meta name="theme-color" content="#15110f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<style>
+:root { --bg:#15110f; --panel:#211a17; --line:#3a2e28; --fg:#f3e9df; --sub:#b6a597; --ember:#e8743b; --broth:#d9b36c; --yami-ink:#b98cf0;
+  --font-display:"Dela Gothic One","Hiragino Sans","Yu Gothic",sans-serif; --font-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic","Meiryo",sans-serif; color-scheme:dark; }
+*,*::before,*::after { box-sizing:border-box; }
+[hidden] { display:none !important; }
+html,body { height:100%; margin:0; }
+body { background:var(--bg); color:var(--fg); font-family:var(--font-body); font-size:15px; line-height:1.6;
+  padding:env(safe-area-inset-top,0) env(safe-area-inset-right,0) env(safe-area-inset-bottom,0) env(safe-area-inset-left,0); -webkit-tap-highlight-color:transparent; }
+.wrap { max-width:980px; margin:0 auto; padding-inline:16px; padding-block:16px 40px; display:grid; gap:16px; }
+header { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px; }
+h1 { font-family:var(--font-display); font-weight:400; font-size:clamp(24px,6vw,36px); margin:0; letter-spacing:.04em; }
+a.nav { color:var(--broth); font-size:13px; }
+.tabs { display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+.tabs button { background:transparent; color:var(--sub); border:0; padding:12px 8px; font:inherit; font-weight:700; cursor:pointer; overflow-wrap:anywhere; }
+.tabs button[aria-pressed="true"] { background:var(--ember); color:#1a0f08; }
+.main { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:16px; align-items:start; }
+@media (max-width:760px) { .main { grid-template-columns:minmax(0,1fr); } }
+.stage { display:grid; place-items:center; }
+.wheel-box { position:relative; width:min(100%,460px); aspect-ratio:1; }
+canvas { width:100%; height:100%; display:block; }
+.pointer { position:absolute; left:50%; top:-6px; transform:translateX(-50%); width:0; height:0; border-left:16px solid transparent; border-right:16px solid transparent; border-top:30px solid var(--ember); filter:drop-shadow(0 2px 4px rgba(0,0,0,.6)); }
+.panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; display:grid; gap:12px; min-width:0; }
+.hint { font-size:12px; color:var(--sub); margin:0; }
+.spin { font-family:var(--font-display); font-size:24px; letter-spacing:.1em; padding:14px; border-radius:10px; border:0; background:var(--ember); color:#1a0f08; width:100%; cursor:pointer; }
+.spin:disabled { opacity:.45; cursor:default; }
+.ghost { background:transparent; color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:6px 10px; font:inherit; font-size:13px; cursor:pointer; }
+.ghost:disabled { opacity:.45; cursor:default; }
+input[type=text], textarea { background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:8px 10px; font:inherit; width:100%; min-width:0; }
+textarea { min-height:190px; resize:vertical; }
+label.row { display:flex; gap:6px; align-items:center; }
+.row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline:2px solid var(--broth); outline-offset:2px; }
+.log { font-size:13px; color:var(--sub); margin:0; padding-left:20px; max-height:200px; overflow:auto; }
+.log b { color:var(--fg); }
+details summary { cursor:pointer; color:var(--sub); }
+details[open] summary { margin-bottom:10px; }
+.result { position:fixed; inset:0; display:grid; place-items:center; background:rgba(8,6,5,.88); padding:16px; z-index:10; }
+.card { width:min(560px,100%); background:#0b0a10; border:1px solid #3b2b55; border-radius:14px; padding:28px 20px; display:grid; gap:14px; text-align:center; }
+.card .who { color:var(--sub); font-size:14px; }
+.card .big { font-family:var(--font-display); font-size:clamp(40px,13vw,80px); line-height:1.15; color:var(--yami-ink); text-shadow:0 0 24px rgba(185,140,240,.45); overflow-wrap:anywhere; }
+.card button { padding:12px; border-radius:10px; font:inherit; font-weight:700; border:0; background:var(--ember); color:#1a0f08; cursor:pointer; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>名前ルーレット</h1>
+    <a class="nav" href="./">← 鍋のくじへ</a>
+  </header>
+
+  <div class="tabs" id="tabs" role="group" aria-label="どのチームのルーレットか"></div>
+
+  <div class="main">
+    <section class="stage" aria-label="ルーレット">
+      <div class="wheel-box">
+        <canvas id="wheel" width="920" height="920" aria-hidden="true"></canvas>
+        <div class="pointer" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <p class="hint" id="remain"></p>
+      <button class="spin" id="spinBtn">回す</button>
+      <label class="row"><input type="checkbox" id="removeHit"> 当たった人は、次から外す</label>
+      <ol class="log" id="log"></ol>
+      <div class="row" style="justify-content:space-between">
+        <button class="ghost" id="undo">1つ前を取り消す</button>
+        <button class="ghost" id="reset">このチームを最初に戻す</button>
+      </div>
+      <details id="settings">
+        <summary>設定（チーム名・名前）</summary>
+        <div style="display:grid;gap:10px">
+          <label>チーム名<input type="text" id="teamName" maxlength="12"></label>
+          <label>名前（1行に1人）<textarea id="names" spellcheck="false"></textarea></label>
+          <p class="hint">書き換えるとすぐルーレットに入ります。この端末にだけ保存されます。</p>
+        </div>
+      </details>
+    </section>
+  </div>
+</div>
+
+<div class="result" id="result" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="resBig">
+    <div class="who" id="resWho"></div>
+    <div class="big" id="resBig"></div>
+    <button id="resClose">閉じる</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const KEY = 'yaminabe-names-v1';
+  const $ = id => document.getElementById(id);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const DEF = { cur: 0, removeHit: false, teams: [{ name: 'チームA', names: [], out: [], log: [] }, { name: 'チームB', names: [], out: [], log: [] }] };
+  let S = load();
+  function load() {
+    let o = null;
+    try { o = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+    const s = JSON.parse(JSON.stringify(DEF));
+    if (o && Array.isArray(o.teams) && o.teams.length === 2) {
+      s.cur = o.cur === 1 ? 1 : 0; s.removeHit = !!o.removeHit;
+      o.teams.forEach((t, i) => { s.teams[i] = { name: String(t.name || DEF.teams[i].name), names: (t.names || []).map(String), out: (t.out || []).map(String), log: (t.log || []).map(String) }; });
+    }
+    return s;
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+  // リンクの # 以降に入れた名前を取り込む（#a=チーム名:名前,名前&b=チーム名:名前,名前）
+  (function importHash() {
+    if (location.hash.length < 4) return;
+    try {
+      const q = new URLSearchParams(location.hash.slice(1));
+      ['a', 'b'].forEach((k, i) => {
+        const v = q.get(k); if (!v) return;
+        const j = v.indexOf(':'); const nm = j >= 0 ? v.slice(0, j) : ''; const list = (j >= 0 ? v.slice(j + 1) : v).split(',').map(x => x.trim()).filter(Boolean);
+        S.teams[i] = { name: nm || S.teams[i].name, names: list, out: [], log: [] };
+      });
+      save(); history.replaceState(null, '', location.pathname);
+    } catch (e) {}
+  })();
+
+  const T = () => S.teams[S.cur];
+  const active = () => T().names.filter(n => !T().out.includes(n));
+  const COLORS = ['#c9692f', '#b98a3e', '#8f5a35', '#5b3d8a'];
+  const cv = $('wheel'), ctx = cv.getContext('2d');
+  let angle = 0, spinning = false;
+
+  function draw() {
+    const a = active(), W = cv.width, R = W / 2 - 8, c = W / 2;
+    ctx.clearRect(0, 0, W, W);
+    ctx.save(); ctx.translate(c, c); ctx.rotate(angle);
+    if (!a.length) { ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fillStyle = '#2a211c'; ctx.fill(); }
+    const da = Math.PI * 2 / (a.length || 1); let a0 = -Math.PI / 2;
+    a.forEach((n, i) => {
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, a0, a0 + da); ctx.closePath();
+      // 隣と同じ色にならないようにする（人数が色数の倍数+1の時の最後だけずらす）
+      let ci = i % COLORS.length; if (i === a.length - 1 && ci === 0 && a.length > 1) ci = 1;
+      ctx.fillStyle = COLORS[ci]; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#15110f'; ctx.stroke();
+      ctx.save(); ctx.rotate(a0 + da / 2);
+      ctx.fillStyle = ci === 3 ? '#f3e9df' : '#1a0f08';
+      let fs = Math.max(20, Math.min(48, da * R * 0.42));
+      ctx.font = `${fs}px "Dela Gothic One", sans-serif`;
+      const maxW = R * 0.66; const w = ctx.measureText(n).width;
+      if (w > maxW) { fs = Math.max(14, fs * maxW / w); ctx.font = `${fs}px "Dela Gothic One", sans-serif`; }
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText(n, R - 24, 0);
+      ctx.restore(); a0 += da;
+    });
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(c, c, R, 0, Math.PI * 2); ctx.lineWidth = 10; ctx.strokeStyle = '#3a2e28'; ctx.stroke();
+  }
+
+  function spin() {
+    const a = active(); if (spinning || !a.length) return;
+    const idx = Math.floor(Math.random() * a.length), da = Math.PI * 2 / a.length;
+    const mid = (idx + 0.2 + Math.random() * 0.6) * da;
+    const cur = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    let delta = ((-mid - cur) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    delta += Math.PI * 2 * (reduce ? 1 : 6);
+    const from = angle, dur = reduce ? 600 : 4800, t0 = performance.now();
+    spinning = true; $('spinBtn').disabled = true;
+    const ease = t => 1 - Math.pow(1 - t, 4);
+    let done = false;
+    const end = () => { if (done) return; done = true; angle = from + delta; draw(); spinning = false; finish(a[idx]); };
+    (function step(now) { if (done) return; const t = Math.min(1, (now - t0) / dur); angle = from + delta * ease(t); draw(); if (t < 1) requestAnimationFrame(step); else end(); })(t0);
+    setTimeout(end, dur + 500);   // 画面が裏に回っても結果を出す
+  }
+  function finish(name) {
+    $('resWho').textContent = T().name; $('resBig').textContent = name; $('result').hidden = false;
+    T().log.push(name); if (S.removeHit) T().out.push(name);
+    save();
+    try { navigator.vibrate && navigator.vibrate([120, 60, 240]); } catch (e) {}
+  }
+
+  function render() {
+    const tabs = $('tabs'); tabs.innerHTML = '';
+    S.teams.forEach((t, i) => { const b = document.createElement('button'); b.textContent = t.name; b.setAttribute('aria-pressed', String(S.cur === i)); b.onclick = () => { if (spinning) return; S.cur = i; angle = 0; save(); render(); }; tabs.appendChild(b); });
+    const t = T(), a = active();
+    $('remain').textContent = t.names.length ? `${t.name}：${a.length}人（全${t.names.length}人）` : '下の「設定」に名前を入れてください。';
+    $('spinBtn').disabled = spinning || !a.length;
+    $('removeHit').checked = S.removeHit;
+    if (document.activeElement !== $('teamName')) $('teamName').value = t.name;
+    if (document.activeElement !== $('names')) $('names').value = t.names.join('\n');
+    $('log').innerHTML = t.log.map(n => `<li><b>${esc(n)}</b></li>`).join('');
+    $('undo').disabled = !t.log.length;
+    if (!t.names.length) $('settings').open = true;
+    draw();
+  }
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  $('spinBtn').onclick = spin;
+  $('resClose').onclick = () => { $('result').hidden = true; render(); };
+  $('removeHit').onchange = e => { S.removeHit = e.target.checked; save(); };
+  $('teamName').oninput = e => { T().name = e.target.value.trim() || (S.cur ? 'チームB' : 'チームA'); save(); };
+  $('teamName').onchange = render;
+  $('names').oninput = e => { if (spinning) return; const t = T(); t.names = [...new Set(e.target.value.split('\n').map(x => x.trim()).filter(Boolean))]; t.out = t.out.filter(n => t.names.includes(n)); save(); $('remain').textContent = `${t.name}：${active().length}人（全${t.names.length}人）`; $('spinBtn').disabled = !active().length; draw(); };
+  $('names').onchange = render;
+  $('undo').onclick = () => { if (spinning) return; const t = T(); const n = t.log.pop(); if (n === undefined) return; const j = t.out.lastIndexOf(n); if (j >= 0) t.out.splice(j, 1); save(); render(); };
+  $('reset').onclick = () => { if (spinning) return; const t = T(); t.out = []; t.log = []; save(); render(); };
+
+  let lock = null;
+  function keepAwake() { try { if (navigator.wakeLock && !lock) navigator.wakeLock.request('screen').then(l => { lock = l; l.addEventListener('release', () => { lock = null; }); }).catch(() => {}); } catch (e) {} }
+  keepAwake(); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+  document.fonts && document.fonts.ready.then(draw);
+  render();
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+})();
+</script>
+</body>
+</html>

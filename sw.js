@@ -1,8 +1,8 @@
 // 公開のたびに版数を上げること（上げないと古い版が配信され続ける）
 const PREFIX = 'yaminabe-' + encodeURIComponent(self.registration.scope) + '-';
-const CACHE = PREFIX + 'v2';
+const CACHE = PREFIX + 'v3';
 const FONTS = PREFIX + 'fonts';
-const ASSETS = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
+const ASSETS = ['./', 'index.html', 'names.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));

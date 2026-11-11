@@ -112,6 +112,7 @@ details.settings[open] summary { margin-bottom: 10px; }
   <header>
     <h1>闇鍋ルーレット<small>卓ごとに鍋を決める</small></h1>
     <div class="remain" id="remain"></div>
+    <a href="names.html" style="color:var(--broth);font-size:13px">名前ルーレットへ →</a>
   </header>
 
   <div class="main">
@@ -196,7 +197,7 @@ details.settings[open] summary { margin-bottom: 10px; }
 
 <script>
 (() => {
-  const VER = '2';
+  const VER = '3';
   const KEY = 'yaminabe-roulette-v2';
   // held：オリ白でよけた闇鍋のくじ（次に引き終わるまで、くじの外に置く）／again：次の1回は振り直し
   const DEF = { mode: 'lots', nTables: 10, nYami: 3, nPots: 3, pots: ['鍋①', '鍋②', '鍋③'], teams: ['チームA', 'チームB'], returnAvoided: true, showTanto: false, setup: false, pool: null, held: 0, again: false, log: [], table: 1, team: 0 };
