@@ -85,7 +85,7 @@ details[open] summary { margin-bottom:10px; }
         <summary>設定（チーム名・名前）</summary>
         <div style="display:grid;gap:10px">
           <label>チーム名<input type="text" id="teamName" maxlength="12"></label>
-          <label>名前（1行に1人。「姫が指名｜説明」の形も可）<textarea id="names" spellcheck="false"></textarea></label>
+          <label>名前（1行に1人。「姫が指名｜説明」「名前*1.25」の形も可）<textarea id="names" spellcheck="false"></textarea></label>
           <p class="hint">書き換えるとすぐルーレットに入ります。この端末にだけ保存されます。</p>
         </div>
       </details>
@@ -138,7 +138,10 @@ details[open] summary { margin-bottom:10px; }
   const T = () => S.teams[S.cur];
   const active = () => { const a = T().names.slice(); T().out.forEach(o => { const j = a.indexOf(o); if (j >= 0) a.splice(j, 1); }); return a; };
   // 「短い名前｜当たった時の説明」と書くと、輪には短い名前、結果には説明も出す
-  const label = n => n.split('｜')[0]; const desc = n => n.split('｜')[1] || '';
+  // 名前の最後に「*1.25」と書くと、その分だけ当たりやすくなる（輪の幅も同じ割合で広くなる）
+  const wOf = n => { const m = /\*([0-9.]+)\s*$/.exec(n); const v = m ? parseFloat(m[1]) : 1; return v > 0 && v <= 20 ? v : 1; };
+  const base = n => n.replace(/\*[0-9.]+\s*$/, '');
+  const label = n => base(n).split('｜')[0]; const desc = n => base(n).split('｜')[1] || '';
   const COLORS = ['#c9692f', '#b98a3e', '#8f5a35', '#5b3d8a'];
   const cv = $('wheel'), ctx = cv.getContext('2d');
   let angle = 0, spinning = false;
@@ -148,8 +151,9 @@ details[open] summary { margin-bottom:10px; }
     ctx.clearRect(0, 0, W, W);
     ctx.save(); ctx.translate(c, c); ctx.rotate(angle);
     if (!a.length) { ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fillStyle = '#2a211c'; ctx.fill(); }
-    const da = Math.PI * 2 / (a.length || 1); let a0 = -Math.PI / 2;
+    const tot = a.reduce((x, n) => x + wOf(n), 0) || 1; let a0 = -Math.PI / 2;
     a.forEach((n, i) => {
+      const da = Math.PI * 2 * wOf(n) / tot;
       ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, a0, a0 + da); ctx.closePath();
       // 隣と同じ色にならないようにする（人数が色数の倍数+1の時の最後だけずらす）
       let ci = i % COLORS.length; if (i === a.length - 1 && ci === 0 && a.length > 1) ci = 1;
@@ -169,8 +173,12 @@ details[open] summary { margin-bottom:10px; }
 
   function spin() {
     const a = active(); if (spinning || !a.length) return;
-    const idx = Math.floor(Math.random() * a.length), da = Math.PI * 2 / a.length;
-    const mid = (idx + 0.2 + Math.random() * 0.6) * da;
+    const tot = a.reduce((x, n) => x + wOf(n), 0);
+    let r = Math.random() * tot, idx = 0;
+    for (; idx < a.length; idx++) { r -= wOf(a[idx]); if (r <= 0) break; }
+    idx = Math.min(idx, a.length - 1);
+    let st = 0; for (let i = 0; i < idx; i++) st += wOf(a[i]);
+    const mid = (st + wOf(a[idx]) * (0.2 + Math.random() * 0.6)) / tot * Math.PI * 2;
     const cur = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     let delta = ((-mid - cur) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
     delta += Math.PI * 2 * (reduce ? 1 : 6);
