@@ -107,7 +107,9 @@ details[open] summary { margin-bottom:10px; }
   const KEY = 'yaminabe-names-v1';
   const $ = id => document.getElementById(id);
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const DEF = { cur: 0, removeHit: false, teams: [{ name: 'チームA', names: [], out: [], log: [] }, { name: 'チームB', names: [], out: [], log: [] }] };
+  const DEF = { cur: 0, removeHit: false, teams: [
+    { name: 'りせチーム', names: ['りせ', 'るいるい', '直樹', 'らみ', '姫が指名｜姫が相手チームのメンバーを指名', 'ちふゆ', 'そら', 'すみれ', '姫が指名｜姫が相手チームのメンバーを指名'], out: [], log: [] },
+    { name: 'うららチーム', names: ['うらら*1.25', 'はるひ', 'うた', 'かいり', '立花ルイ', 'ルナ', 'うらら', 'れお', '姫が指名｜姫が相手チームのメンバーを指名'], out: [], log: [] }] };
   let S = load();
   function load() {
     let o = null;
